@@ -1,4 +1,4 @@
-# Copyright (C) 2018-2021, Benjamin Drung <benjamin.drung@ionos.com>
+# Copyright (C) 2018-2022, Benjamin Drung <bdrung@posteo.de>
 #
 # Permission to use, copy, modify, and/or distribute this software for any
 # purpose with or without fee is hereby granted, provided that the above
@@ -16,6 +16,7 @@
 
 import os
 import re
+import sys
 import unittest
 
 from ionit import collect_context, main, render_templates
@@ -112,14 +113,24 @@ class TestCollectContext(unittest.TestCase):
                 collect_context([os.path.join(CONFIG_DIR, "invalid-json")], "utf-8"), (1, {})
             )
             self.assertEqual(len(context_manager.output), 1)
-            self.assertRegex(
-                context_manager.output[0],
-                (
-                    "ERROR:ionit:Failed to read JSON from "
-                    "'[^']*config/invalid-json/invalid.json': Expecting property name "
-                    r"enclosed in double quotes: line 3 column 1 \(char 22\)"
-                ),
-            )
+            if sys.version_info >= (3, 13):
+                self.assertRegex(
+                    context_manager.output[0],
+                    (
+                        "ERROR:ionit:Failed to read JSON from "
+                        "'[^']*config/invalid-json/invalid.json': Illegal trailing comma before "
+                        r"end of object: line 2 column 19 \(char 20\)"
+                    ),
+                )
+            else:
+                self.assertRegex(
+                    context_manager.output[0],
+                    (
+                        "ERROR:ionit:Failed to read JSON from "
+                        "'[^']*config/invalid-json/invalid.json': Expecting property name "
+                        r"enclosed in double quotes: line 3 column 1 \(char 22\)"
+                    ),
+                )
 
     def test_invalid_python(self):
         """Test: Run collect_context(["tests/config/invalid-python"])"""
@@ -150,7 +161,8 @@ class TestCollectContext(unittest.TestCase):
                 (
                     "ERROR:ionit:Failed to read YAML from "
                     r"'[^']*config/invalid-yaml/invalid.yaml': mapping values are not allowed "
-                    r"here\s+in \"\S*config/invalid-yaml/invalid.yaml\", line 1, column 14"
+                    r"(here|in this context)\s+"
+                    r"in \"\S*config/invalid-yaml/invalid.yaml\", line 3, column 14"
                 ),
             )
 
@@ -331,6 +343,17 @@ class TestMain(unittest.TestCase):
         finally:
             os.remove(os.path.join(template_dir, "Document"))
 
+    @unittest.mock.patch("ionit.DEFAULT_TEMPLATES_DIRECTORY", os.path.join(TEMPLATE_DIR, "static"))
+    def test_main_default_templates_directory(self):
+        """Test main() with default templates directory"""
+        template_dir = os.path.join(TEMPLATE_DIR, "static")
+        try:
+            self.assertEqual(main(["-c", os.path.join(TESTS_DIR, "config/static")]), 0)
+            with open(os.path.join(template_dir, "counting"), encoding="utf-8") as counting_file:
+                self.assertEqual(counting_file.read(), "Counting:\n* 1\n* 2\n* 3\n")
+        finally:
+            os.remove(os.path.join(template_dir, "counting"))
+
     def test_main_static(self):
         """Test main() with static context"""
         template_dir = os.path.join(TEMPLATE_DIR, "static")
@@ -342,3 +365,29 @@ class TestMain(unittest.TestCase):
                 self.assertEqual(counting_file.read(), "Counting:\n* 1\n* 2\n* 3\n")
         finally:
             os.remove(os.path.join(template_dir, "counting"))
+
+    def test_main_append_templates(self):
+        """Test main() with static context and multiple template directories"""
+        template_dir1 = os.path.join(TEMPLATE_DIR, "static")
+        template_dir2 = os.path.join(TEMPLATE_DIR, "static2")
+        try:
+            self.assertEqual(
+                main(
+                    [
+                        "-c",
+                        os.path.join(TESTS_DIR, "config/static"),
+                        "-t",
+                        template_dir1,
+                        "-t",
+                        template_dir2,
+                    ]
+                ),
+                0,
+            )
+            with open(os.path.join(template_dir1, "counting"), encoding="utf8") as counting_file:
+                self.assertEqual(counting_file.read(), "Counting:\n* 1\n* 2\n* 3\n")
+            with open(os.path.join(template_dir2, "counting"), encoding="utf8") as counting_file:
+                self.assertEqual(counting_file.read(), "1 is smaller than 2\n")
+        finally:
+            os.remove(os.path.join(template_dir1, "counting"))
+            os.remove(os.path.join(template_dir2, "counting"))

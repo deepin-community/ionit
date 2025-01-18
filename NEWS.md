@@ -1,3 +1,21 @@
+ionit 0.5.1 (2025-01-13)
+========================
+
+* Fix `AttributeError: "load()" has been removed` when using ruamel.yaml 0.18
+* test: Adjust for improved JSON error messages in Python 3.13 (#3)
+
+ionit 0.5.0 (2022-03-16)
+========================
+
+* Support multiple templates folders (i.e. allow specifying `--templates`
+  multiple times) (#2)
+
+ionit 0.4.1 (2022-03-04)
+========================
+
+* Make YAML files free of complaints from yamllint
+* Update my email address to @posteo.de
+
 ionit 0.4.0 (2021-11-05)
 ========================
 
