@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-# Copyright (C) 2018-2021, Benjamin Drung <benjamin.drung@ionos.com>
+# Copyright (C) 2018-2022, Benjamin Drung <bdrung@posteo.de>
 #
 # Permission to use, copy, modify, and/or distribute this software for any
 # purpose with or without fee is hereby granted, provided that the above
@@ -34,6 +34,7 @@ except ImportError:
 
 
 DEFAULT_CONFIG = "/etc/ionit"
+DEFAULT_TEMPLATES_DIRECTORY = "/etc"
 LOG_FORMAT = "%(asctime)s %(name)s %(levelname)s: %(message)s"
 SCRIPT_NAME = "ionit"
 
@@ -84,6 +85,16 @@ def load_python_plugin(file_path, current_context):
     return context
 
 
+def load_yaml(stream):
+    """Parse the first YAML document in a stream
+    and produce the corresponding Python object.
+    """
+    if hasattr(yaml, "YAML"):
+        yaml_object = yaml.YAML(typ="safe")
+        return yaml_object.load(stream)
+    return yaml.load(stream, Loader=yaml.SafeLoader)
+
+
 def get_config_files(paths):
     """Return files for the given paths (could either be files or directories)."""
     logger = logging.getLogger(SCRIPT_NAME)
@@ -122,7 +133,7 @@ def collect_context(paths, encoding):
             elif extension == ".yaml":
                 logger.info("Reading configuration file '%s'...", file)
                 with open(file, encoding=encoding) as config_file:
-                    file_context = yaml.load(config_file, Loader=yaml.SafeLoader)
+                    file_context = load_yaml(config_file)
             else:
                 logger.info(
                     "Skipping configuration file '%s', "
@@ -207,8 +218,8 @@ def main(argv):
     parser.add_argument(
         "-t",
         "--templates",
-        default="/etc",
-        help="Directory to search for Jinja templates (default: %(default)s)",
+        action="append",
+        help=f"Directory to search for Jinja templates (default: {DEFAULT_TEMPLATES_DIRECTORY})",
     )
     parser.add_argument(
         "-e",
@@ -240,12 +251,15 @@ def main(argv):
     args = parser.parse_args(argv)
     if args.config is None:
         args.config = [DEFAULT_CONFIG]
+    if args.templates is None:
+        args.templates = [DEFAULT_TEMPLATES_DIRECTORY]
     logging.basicConfig(level=args.log_level, format=LOG_FORMAT)
     logger = logging.getLogger(SCRIPT_NAME)
 
     failures, context = collect_context(args.config, args.encoding)
     logger.debug("Context: %s", context)
-    failures += render_templates(args.templates, context, args.template_extension, args.encoding)
+    for template in args.templates:
+        failures += render_templates(template, context, args.template_extension, args.encoding)
     return failures
 
 

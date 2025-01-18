@@ -1,23 +1,25 @@
 Source: ionit
 Section: utils
 Priority: optional
-Maintainer: Benjamin Drung <benjamin.drung@ionos.com>
+Maintainer: Benjamin Drung <bdrung@debian.org>
 Build-Depends: black,
                debhelper-compat (= 13),
                dh-python,
                isort,
                pandoc,
+               pkgconf,
                pylint (>= 2.2.2-2~) | pylint3,
                python3,
                python3-flake8,
                python3-jinja2,
                python3-setuptools,
-               python3-yaml | python3-ruamel.yaml
-Standards-Version: 4.6.0
+               python3-yaml | python3-ruamel.yaml,
+               systemd-dev
+Standards-Version: 4.7.0
 Homepage: https://github.com/bdrung/ionit
 Rules-Requires-Root: no
-Vcs-Browser: https://github.com/bdrung/ionit
-Vcs-Git: https://github.com/bdrung/ionit.git
+Vcs-Browser: https://github.com/bdrung/ionit/tree/debian/unstable
+Vcs-Git: https://github.com/bdrung/ionit.git -b debian/unstable
 
 Package: ionit
 Architecture: all
